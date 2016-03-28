@@ -7,11 +7,14 @@ package basiccdkapp;
 
 import java.io.InputStream;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import org.openscience.cdk.*;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.tools.manipulator.MolecularFormulaManipulator;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
+import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
+import org.openscience.cdk.templates.MoleculeFactory;
 
 public class BasicCDKApp {
 
@@ -89,7 +92,24 @@ public void run (String[] args) throws Exception {
                 showMoleculeProperties(m, ++molCount);
             }
         }
-        reader.close(); 
+        reader.close();
+        
+        // now do some substructure searching
+        printHeader("Substructure Searching");
+        IAtomContainer propane = MoleculeFactory.makeAlkane(3);
+        IAtomContainer butane = MoleculeFactory.makeAlkane(4);
+        UniversalIsomorphismTester isomorphismTester = 
+                new UniversalIsomorphismTester();
+        System.out.println("Propane part of butane: " + 
+                isomorphismTester.isSubgraph(butane, propane));
+        System.out.println("Butane part of propane: " + 
+                isomorphismTester.isSubgraph(propane, butane));
+        
+        List hits = isomorphismTester.getSubgraphAtomsMaps(butane, propane);
+        System.out.printf("Number of hits: %d", hits.size());
+        System.out.println(" (done in both directions)");
+        System.out.println();
+        
     }
     
     private static void printHeader(String str) {
