@@ -9,7 +9,15 @@ import java.io.InputStream;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import static java.util.stream.DoubleStream.builder;
+import static java.util.stream.IntStream.builder;
 import org.openscience.cdk.*;
+import org.openscience.cdk.config.IsotopeFactory;
+import org.openscience.cdk.config.Isotopes;
+import org.openscience.cdk.formula.MolecularFormula;
+import org.openscience.cdk.formula.MolecularFormulaGenerator;
+import org.openscience.cdk.formula.MolecularFormulaRange;
+import org.openscience.cdk.formula.MolecularFormulaSet;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.tools.manipulator.MolecularFormulaManipulator;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
@@ -110,6 +118,52 @@ public void run (String[] args) throws Exception {
         System.out.println(" (done in both directions)");
         System.out.println();
         
+        
+        /*
+            This class generates molecular formulas within given mass range and
+            elemental composition. There is no guaranteed order in which the
+            formulas are generated. Usage:
+        */
+        printHeader("Mass to Molecular Formula");
+        IsotopeFactory ifac = Isotopes.getInstance();
+        IIsotope c = ifac.getMajorIsotope("C");
+        IIsotope h = ifac.getMajorIsotope("H");
+        IIsotope n = ifac.getMajorIsotope("N");
+        IIsotope o = ifac.getMajorIsotope("O");
+        IIsotope p = ifac.getMajorIsotope("P");
+        IIsotope s = ifac.getMajorIsotope("S");
+
+        MolecularFormulaRange mfRange = new MolecularFormulaRange();
+        mfRange.addIsotope(c, 0, 50);
+        mfRange.addIsotope(h, 0, 100);
+        mfRange.addIsotope(o, 0, 50);
+        mfRange.addIsotope(n, 0, 50);
+        mfRange.addIsotope(p, 0, 10);
+        mfRange.addIsotope(s, 0, 10);
+        
+        double mass = 133.004;
+        double delta = 0.002;
+        double minMass = mass - delta;
+        double maxMass = mass + delta;
+        
+        System.out.printf("Mass range is %f to %f.", minMass, maxMass);
+        System.out.println("\n");
+        
+        IChemObjectBuilder builder = DefaultChemObjectBuilder.getInstance();
+
+        MolecularFormulaGenerator mfg = new MolecularFormulaGenerator(builder,
+                 minMass, maxMass, mfRange);
+         
+        IMolecularFormulaSet mfSet = mfg.getAllFormulas();
+         
+        Iterator<IMolecularFormula> it = mfSet.molecularFormulas().iterator();
+         
+        while (it.hasNext()) {
+            IMolecularFormula mForm = it.next();
+            String mf = MolecularFormulaManipulator.getString(mForm);
+            Double mw = MolecularFormulaManipulator.getTotalExactMass(mForm);
+            System.out.println("Molecular formula = " + mf + " has MW " + mw.toString());
+        }
     }
     
     private static void printHeader(String str) {
