@@ -12,13 +12,13 @@ import java.util.Map;
 import org.openscience.cdk.*;
 import org.openscience.cdk.config.IsotopeFactory;
 import org.openscience.cdk.config.Isotopes;
-import org.openscience.cdk.formula.MolecularFormulaGenerator;
-import org.openscience.cdk.formula.MolecularFormulaRange;
+import org.openscience.cdk.formula.*;
 import org.openscience.cdk.interfaces.*;
 import org.openscience.cdk.tools.manipulator.MolecularFormulaManipulator;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.templates.MoleculeFactory;
+import basiccdkapp.cdkMolecularFormulaParser;
 
 public class BasicCDKApp {
 
@@ -160,6 +160,12 @@ public void run (String[] args) throws Exception {
             Double mw = MolecularFormulaManipulator.getTotalExactMass(mForm);
             System.out.println("Molecular formula = " + mf + " has MW " + mw.toString());
         }
+        System.out.println("");
+        
+        // Molecular Formula Parsing
+        String formula = "(CH3)3C(CH2)2CHCH3COO.Na";
+        printHeader("Molecular Formula Parsing - " + formula);
+        IAtomContainer myAC = cdkMolecularFormulaParser.parseFormula(formula);
     }
     
     private static void printHeader(String str) {
@@ -200,5 +206,5 @@ public void run (String[] args) throws Exception {
             System.out.printf("Molecule property %s has value %s", key.toString(), value.toString() + "\n");
         }
         System.out.println("\n");
-    }    
+    }
 }
