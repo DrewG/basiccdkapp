@@ -163,7 +163,7 @@ public void run (String[] args) throws Exception {
         System.out.println("");
         
         // Molecular Formula Parsing
-        String formula = "(CH3)3C(CH2)2CHCH3COO.Na";
+        String formula = "(CH3)3C(CH2)2CH(CH3)CH2COO.Na";
         printHeader("Molecular Formula Parsing - " + formula);
         IAtomContainer myAC = cdkMolecularFormulaParser.parseFormula(formula);
     }
