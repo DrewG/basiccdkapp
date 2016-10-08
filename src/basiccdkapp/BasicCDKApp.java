@@ -18,7 +18,6 @@ import org.openscience.cdk.tools.manipulator.MolecularFormulaManipulator;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.templates.MoleculeFactory;
-import basiccdkapp.cdkMolecularFormulaParser;
 
 public class BasicCDKApp {
 
@@ -130,35 +129,34 @@ public void run (String[] args) throws Exception {
         IIsotope s = ifac.getMajorIsotope("S");
 
         MolecularFormulaRange mfRange = new MolecularFormulaRange();
-        mfRange.addIsotope(c, 0, 50);
-        mfRange.addIsotope(h, 0, 100);
-        mfRange.addIsotope(o, 0, 50);
-        mfRange.addIsotope(n, 0, 50);
-        mfRange.addIsotope(p, 0, 10);
-        mfRange.addIsotope(s, 0, 10);
-        
-        double mass = 133.004;
-        double delta = 0.002;
+        mfRange.addIsotope(c, 32, 50);
+        mfRange.addIsotope(h, 10, 80);
+        mfRange.addIsotope(o, 1, 28);
+        mfRange.addIsotope(n, 1, 10);
+        //mfRange.addIsotope(p, 0, 10);
+        //mfRange.addIsotope(s, 0, 10);
+       
+        double mass = 921.385;
+        double delta = 0.001;
         double minMass = mass - delta;
         double maxMass = mass + delta;
-        
-        System.out.printf("Mass range is %f to %f.", minMass, maxMass);
-        System.out.println("\n");
-        
-        IChemObjectBuilder builder = DefaultChemObjectBuilder.getInstance();
 
+        DefaultChemObjectBuilder builder = (DefaultChemObjectBuilder) DefaultChemObjectBuilder.getInstance();
         MolecularFormulaGenerator mfg = new MolecularFormulaGenerator(builder,
-                 minMass, maxMass, mfRange);
-         
+                                                minMass, maxMass, mfRange);
         IMolecularFormulaSet mfSet = mfg.getAllFormulas();
-         
-        Iterator<IMolecularFormula> it = mfSet.molecularFormulas().iterator();
-         
-        while (it.hasNext()) {
-            IMolecularFormula mForm = it.next();
+
+        for (int i = 0; i < mfSet.size(); i++) {
+            IMolecularFormula mForm = mfSet.getMolecularFormula(i);
             String mf = MolecularFormulaManipulator.getString(mForm);
-            Double mw = MolecularFormulaManipulator.getTotalExactMass(mForm);
-            System.out.println("Molecular formula = " + mf + " has MW " + mw.toString());
+            IsotopePatternGenerator ipg =  new IsotopePatternGenerator(0.0005);
+            IsotopePattern ip = ipg.getIsotopes(mForm);
+            
+            for (int j = 0; j < ip.getNumberOfIsotopes(); j++) {
+                IsotopeContainer ic = ip.getIsotope(j);
+                ip.setCharge(1.0);
+                System.out.printf("Molecular formula = %s, IP = %f, Int = %f \n", mf, ic.getMass(), ic.getIntensity());
+            }
         }
         System.out.println("");
         
