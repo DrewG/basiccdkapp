@@ -18,6 +18,11 @@ import org.openscience.cdk.tools.manipulator.MolecularFormulaManipulator;
 import org.openscience.cdk.io.iterator.IteratingSDFReader;
 import org.openscience.cdk.isomorphism.UniversalIsomorphismTester;
 import org.openscience.cdk.templates.MoleculeFactory;
+// next one added for fingerprints Nov 2019
+import org.openscience.cdk.tools.manipulator.AtomContainerManipulator;
+import org.openscience.cdk.fingerprint.IFingerprinter;
+import org.openscience.cdk.fingerprint.IBitFingerprint;
+import org.openscience.cdk.fingerprint.ShortestPathFingerprinter;
 
 public class BasicCDKApp {
 
@@ -33,7 +38,12 @@ public class BasicCDKApp {
 
 // instance variables here
 
-public void run (String[] args) throws Exception {       
+public void run (String[] args) throws Exception {  
+    
+        // for fingerprints
+        IAtomContainer fpMolecule = new AtomContainer();
+        IAtomContainer fpMoleculeCompare = new AtomContainer();
+    
         // first, create an instance of an atom
         IAtom atom = new Atom("C");
         
@@ -82,7 +92,8 @@ public void run (String[] args) throws Exception {
         
         // a little more interesting stuff now...
         // load data in from an SDFile - it's built into the project
-        String filename = "sdf/cdktest.sdf";
+        //String filename = "sdf/cdktest.sdf";
+        String filename = "sdf/cdktest_noH.sdf";
         InputStream ins = this.getClass().getClassLoader().getResourceAsStream(filename);
 
         IteratingSDFReader reader = new IteratingSDFReader(ins, DefaultChemObjectBuilder.getInstance());
@@ -93,6 +104,13 @@ public void run (String[] args) throws Exception {
             if (object instanceof IAtomContainer) {
                 IAtomContainer m = (IAtomContainer) object;
                 showMoleculeProperties(m, ++molCount);
+                // going to grab SDF molecule 7 to calculate fingerprints
+                if (molCount == 6) {
+                    fpMoleculeCompare = m;
+                }
+                if (molCount == 7) {
+                    fpMolecule = m;
+                }
             }
         }
         reader.close();
@@ -142,8 +160,7 @@ public void run (String[] args) throws Exception {
         double maxMass = mass + delta;
 
         DefaultChemObjectBuilder builder = (DefaultChemObjectBuilder) DefaultChemObjectBuilder.getInstance();
-        MolecularFormulaGenerator mfg = new MolecularFormulaGenerator(builder,
-                                                minMass, maxMass, mfRange);
+        MolecularFormulaGenerator mfg = new MolecularFormulaGenerator(builder,minMass, maxMass, mfRange);
         IMolecularFormulaSet mfSet = mfg.getAllFormulas();
 
         for (int i = 0; i < mfSet.size(); i++) {
@@ -164,10 +181,102 @@ public void run (String[] args) throws Exception {
         String formula = "(CH3)3C(CH2)2CH(CH3)CH2COO.Na";
         printHeader("Molecular Formula Parsing - " + formula);
         IAtomContainer myAC = cdkMolecularFormulaParser.parseFormula(formula);
-    }
+        
+        /*
+            Now for some fingerprints stuff.  Nov 2019.
+            fpMolecule was grabbed from the SDF earlier, and was molCount = 7
+            fpMoleculeCompare was grabbed from the SDF earlier, and was molCount = 6
+        */
+        printHeader("FingerPrints");
+        showMoleculeProperties(fpMoleculeCompare, 6);
+        showMoleculeProperties(fpMolecule, 7);
+        
+        /*
+            from the javadoc...
+                It is recommended to use atomtyped container before generating
+                the fingerprints.  For example
+            AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(atomContainer);
+        */
+        
+        // sets implicit H's among other things
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(fpMolecule);
+        AtomContainerManipulator.percieveAtomTypesAndConfigureAtoms(fpMoleculeCompare);
+        
+        /*
+            also from the javadoc...
+            "The FingerPrinter assumes that hydrogens are explicitly given!"
+        */
+        
+        printHeader("Fingerprints - Before Explicit H's");
+        printDescInt("atomCount", fpMolecule.getAtomCount());
+        printDescInt("ImplicitHCount", AtomContainerManipulator.getImplicitHydrogenCount(fpMolecule));
+        printDescInt("TotalHCount", AtomContainerManipulator.getTotalHydrogenCount(fpMolecule));
+        
+        // convert implicit H to explicit H
+        AtomContainerManipulator.convertImplicitToExplicitHydrogens(fpMolecule);
+        AtomContainerManipulator.convertImplicitToExplicitHydrogens(fpMoleculeCompare);
+        
+        printHeader("Fingerprints - After Explicit H's");
+        printDescInt("atomCount", fpMolecule.getAtomCount());
+        printDescInt("ImplicitHCount", AtomContainerManipulator.getImplicitHydrogenCount(fpMolecule));
+        printDescInt("TotalHCount", AtomContainerManipulator.getTotalHydrogenCount(fpMolecule));
+        
+        // now generate the fingerprint
+        IFingerprinter fingerprinter = new ShortestPathFingerprinter();  // 1024 BY DEFAULT
+        IBitFingerprint fingerprint = fingerprinter.getBitFingerprint(fpMolecule);
+        IBitFingerprint fingerprintCompare = fingerprinter.getBitFingerprint(fpMoleculeCompare);
+        printDescInt("Fingerprint Size", (int)fingerprint.size()); // returns 1024 by default
+        printDescInt("No. of fingerprint bits on", fingerprint.cardinality());
+        printDescInt("No. of fingerprintCompare bits on", fingerprintCompare.cardinality());
+        
+        /*
+            simple Tanimoto calculation using IBitFingerprint methods...
+            
+            sim = num set bits the same in both (AND) / num total set bits in both (OR)
+        */
+        
+        /*
+            NB !!! This modifies the fingerprint !!!
+            You CANNOT use 
+                fingerprint.and(fingerprintCompare);
+            followed by
+                fingerprint.or(fingerprintCompare);
+                because fingerprint is DIFFERENT after the first 
+         */
+        
+        // doing it properly
+        printHeader("Fingerprints - Tanimoto Calculation");
+        
+        // create 2 copies of the query for AND / OR comparison
+        IBitFingerprint fingerprint_OR = fingerprinter.getBitFingerprint(fpMolecule);
+        IBitFingerprint fingerprint_AND = fingerprinter.getBitFingerprint(fpMolecule);
+        IBitFingerprint fingerprint_Compare = fingerprinter.getBitFingerprint(fpMoleculeCompare);
+        
+        fingerprint_AND.and(fingerprintCompare);
+        fingerprint_OR.or(fingerprintCompare);
+        
+        int tanimoto_Or = fingerprint_OR.cardinality();
+        int tanimoto_And = fingerprint_AND.cardinality();
+        
+        printDescInt("No. of fingerprint bits on", fingerprint.cardinality());
+        printDescInt("No. of fingerprint_OR bits on", tanimoto_Or);
+        printDescInt("No. of fingerprint_AND bits on", tanimoto_And);
+        printDescInt("No. of fingerprintCompare bits on", fingerprintCompare.cardinality());
+        
+        double Similarity = (1.0 * tanimoto_And) / tanimoto_Or;
+        
+        // print to 3 decimal places
+        System.out.printf("Similarity = %.3f%n", Similarity);
+        
+}
     
     private static void printHeader(String str) {
         System.out.println("################ " + str + " ################");
+    }
+    
+    private static void printDescInt(String str, Integer i) {
+        System.out.printf("Description: " + str + "; %d", i);
+        System.out.println("\n");
     }
     
     private static void printAtomDetails(IAtom atom) {
